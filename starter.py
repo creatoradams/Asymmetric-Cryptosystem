@@ -12,3 +12,4 @@ def generate_seeds(bits):
         q = generate_prime(bits // 2)
         if p != q:
             return {"p": p, "q": q}
+
