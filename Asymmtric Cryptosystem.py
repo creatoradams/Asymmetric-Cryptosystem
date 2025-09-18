@@ -148,8 +148,57 @@ def makePublicKey(p, q, e_choice=65537):
 
     return {"n": n, "e": e, "phi": phi}  # return public parts
 
+def makePrivateKey(e, phi):
+    # compute private exponent d from e and phi via modular inverse
+    d = modInv(e, phi)
+    return {"d": d}
+
 def encryptKey(plaintext, n, e):
     # encrypt UTF-8 plaintext string using n, e
     # returns a lsit of ciphertext integers
     blocks = encodeMessage(plaintext, n)
     return [modPow(m, e, n) for m in blocks]
+
+def decryptKey(ciphBlock, n, d):
+    # decrypt a list of ciphertext ints using n & d
+    # returns the recovered UTF-8 string
+    plain = [modPow(c, d, n) for c in ciphBlock]
+    return decodeMessage(plain, n) # convert back to text
+
+def signPrivateKey(message, n, d):
+    # sign a message
+    # returns list of signature integers
+    messageBlocks = encodeMessage(message, n) # encode message into ints
+    return [modPow(m, d, n) for m in messageBlocks] # sign each block
+
+def verifyPublicKey(message, sig, n, e):
+    # verify RSA signature, returns true if match and false if not
+    messageBlocks = encodeMessage(message, n) # re encode as ints
+    recover = [modPow(s,e,n) for s in messageBlocks] # recover m from signature
+    return recover == messageBlocks # only valid if all blocks match
+
+""" ------------- Small Demo ---------------
+def _demo():
+    """
+    Quick demo of keygen → encrypt/decrypt → sign/verify using small keys (not secure).
+    """
+    bits = 32 # small for speed in class demo
+    seeds = generateSeeds(bits) # get p and q
+    pub = makePublicKey(seeds["p"], seeds["q"]) # build {n,e,phi}
+    priv = makePrivateKey(pub["e"], pub["phi"]) # build {d}
+    keypair = RSAKeyPair(pub["n"], pub["e"], priv["d"], seeds["p"], seeds["q"])  # pack
+
+    msg = "hello rsa!" # sample message
+    ct = encryptKey(msg, keypair.n, keypair.e)  # encrypt
+    pt = decryptKey(ct, keypair.n, keypair.d)  # decrypt
+    print("cipher:", ct) # show cipher blocks
+    print("plain :", pt) # show plaintext
+
+    sig = signPrivateKey(msg, keypair.n, keypair.d)   # sign
+    ok = verifyPublicKey(msg, sig, keypair.n, keypair.e)  # verify
+    print("sig ok:", ok) # True if signature is valid
+
+
+if __name__ == "__main__":  # only run demo when executed directly
+    _demo()                  # run the tiny end-to-end demonstration
+    """ # this is still being worked on
