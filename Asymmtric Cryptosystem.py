@@ -23,15 +23,14 @@ def modInv(a, m):
 
 
 def modPow(base, exp, mod):
-
     results = 1
     b = base % mod # reduce base modulo mod
     e = exp # copy exponent to shift
     while e > 0: # iterate through until all exponent bits processed
         if e & 1:
             results = (results * b) % mod # multiply result by base modulo mod
-            b = (b * b) % mod # square base modulo mod
-            e >>= 1 # shift exponent right by 1 bit
+        b = (b * b) % mod # square base modulo mod
+        e >>= 1 # shift exponent right by 1 bit
     return results
 
 
@@ -106,8 +105,8 @@ def decodeMessage(blocks, n):
     for i in blocks:
        b = intToBytes(i, k) # convert integer back to k bytes
        pieces.append(b) # append chunk
-       data = b"".join(pieces) # join all chunks into a single byte object
-       return data.decode("utf-8", errors="strict") # decode back to string
+    data = b"".join(pieces) # join all chunks into a single byte object
+    return data.decode("utf-8", errors="strict") # decode back to string
 
 
 
@@ -181,67 +180,183 @@ def verifyPublicKey(message, sig, n, e):
 
 
 def demo():
-   def genKeyPair(bits=32)
-       seeds = generateSeeds(bits)
-       pub = makePublicKey(seeds["p"], seeds["q"])
-       priv = makePrivateKey(seeds["e"], pub["phi"])
-       return RSAKeyPair(pub["n"], priv["e"], priv["d"])
+    # ----- helpers -----
+    def genKeyPair(bits=32):
+        seeds = generateSeeds(bits) # generate two random primes
+        pub = makePublicKey(seeds["p"], seeds["q"]) # build public parts from p and q
+        priv = makePrivateKey(pub["e"], pub["phi"]) # compute private exponent
+        # return a container will all key components
+        return RSAKeyPair(pub["n"], pub["e"], priv["d"], seeds["p"], seeds["q"])
 
-   def run():
-       encryptedMessage = []
-       signatures = []
-       keyPair = genKeyPair(bits=32) # small for demo
-
-   def mainMenu():
-        print("What is your user type?\n")
-        print("1. A public user\n")
-        print("2. A private user\n")
-        print("3. Exit\n")
+    def mainMenu():
+        # role selection prompt to show throughout loop
+        print("What is your user type?")
+        print("1. A public user")
+        print("2. The owner of the keys")
+        print("3. Exit")
         return input("Enter your choice: ")
 
-   def publicMenu():
-       print("Okay, what would you like to do?\n")
-       print("1. Send an encrypted message\n")
-       print("2. Verify a digital signature\n")
-       print("3. Exit\n")
-       return input("Enter your choice: ")
-   def ownersMenu():
-       print("What would you like to do as the owner?\n")
-       print("1. Decrypt a message\n")
-       print("2. Sign a message\n")
-       print("3. Show the keys\n")
-       print("4. Generate a new set of keys\n")
-       print("5. Exit\n")
-       return input("Enter your choice: ")
+    def publicMenu():
+        # display menu actions for public user
+        print("\nAs a public user, what would you like to do?")
+        print("1. Send an encrypted message")
+        print("2. Verify a digital signature")
+        print("3. Exit")
+        return input("Enter your choice: ")
 
-    while True:
-        choice = mainMenu()
+    def ownersMenu():
+        # display menu actions for the owner
+        print("\nAs the owner of the keys, what would you like to do?")
+        print("1. Decrypt a message")
+        print("2. Digitally sign a message")
+        print("3. Show the keys")
+        print("4. Generate a new set of keys")
+        print("5. Exit")
+        return input("Enter your choice: ")
+
+    # ----- state -----
+    encrypted_messages = [] # holds ciphertexts the public sends
+    signatures = [] # holds tuples for verify menu
+    keyPair = genKeyPair(bits=32) # creates a small demo keypair to be fast
+    print("RSA keys have been generated.")
+
+
+    """----- main loop ----- """
+
+    while True: # repeat until user exits
+        choice = mainMenu() # ask which role to do
         if choice == "1":
-         # Public User
-            while True:
-                 c = publicMenu()
-                 if c == "1":
+            # PUBLIC USER LOOP
+            while True: # stay in public menu until exit
+                c = publicMenu() # ask which action to do
+                if c == "1":
+                    # encrypt the text to the owners public key and store it
                     message = input("Enter your message: ")
-                    ek = encryptKey(message, genKeyPair.n, genKeyPair.e)
-                    encryptedMessage.append(ek)
-            print("Message encrypted and sent.")
-        elif c == "2":
-            if not signatures:
-                print("There are no signature to authenticate.")
-            else:
-                print("The following messages are available:")
-                for i, (m, _) in enumerate(signatures, 1):
-                    print(f"{i}. {m}")
-                choi = input("Enter your choice: ")
-                try:
-                    m, s = signatures[int(choi)-1]
-                    ok = verifyPublicKey(m, s, keypair.n, keypair.e)
-                    print("Signature verified." if ok else "Signature is NOT valid.")
-                except Exception:
+                    ct = encryptKey(message, keyPair.n, keyPair.e) # RSA encrypt
+                    encrypted_messages.append(ct) # send
+                    print("Message encrypted and sent.")
+                elif c == "2":
+                    # verify a signature the owner has posted
+                    if not signatures:
+                        print("There are no signatures to authenticate.")
+                    else:
+                        print("The following messages are available:")
+                        # list messages with signatures
+                        for i, (m, _) in enumerate(signatures, 1):
+                            print(f"{i}. {m}")
+                        index = input("Enter your choice: ")
+                        try:
+                            # pick the message by index
+                            m, s = signatures[int(index) - 1]
+                            # verify
+                            ok = verifyPublicKey(m, s, keyPair.n, keyPair.e)
+                            print("Signature verified." if ok else "Signature is NOT valid.")
+                        except Exception:
+                            # handles non integer input or out of range index
+                            print("Invalid selection.")
+                elif c == "3":
+                    # leave public menu and go back to main menu
+                    break
+                else:
                     print("Invalid selection.")
-        elif c == "3":
+
+        elif choice == "2":
+            # OWNER LOOP
+            while True: # stay in owner memu until exit
+                c = ownersMenu() # ask which action to do
+                if c == "1":
+                    # decrypt a ciphertext previously sent
+                    if not encrypted_messages:
+                        print("No messages available.")
+                    else:
+                        print("The following messages are available:")
+
+                        for i, ct in enumerate(encrypted_messages, 1):
+                            print(f"{i}. (length = {len(ct)})")
+                        idx = input("Enter your choice: ")
+                        try:
+                            # pop the ciphertext out of the queue
+                            ct = encrypted_messages.pop(int(idx) - 1)
+                            # decrypt
+                            pt = decryptKey(ct, keyPair.n, keyPair.d)
+                            print("Decrypted message:", pt)
+                        except Exception:
+                            print("Invalid selection.")
+                elif c == "2":
+                    # create a digital signature over a message and publish it
+                    msg = input("Enter a message: ")
+                    sig = signPrivateKey(msg, keyPair.n, keyPair.d)
+                    signatures.append((msg, sig))
+                    print("Message signed and sent.")
+                elif c == "3":
+                    # display current key matieral (for demo)
+                    print(f"n = {keyPair.n}\ne = {keyPair.e}\nd = {keyPair.d}\np = {getattr(keyPair,'p','?')}\nq = {getattr(keyPair,'q','?')}")
+                elif c == "4":
+                    # regenerate keys and clear old messages
+                    keyPair = genKeyPair(bits=32)
+                    encrypted_messages.clear()
+                    signatures.clear()
+                    print("New keys have been generated.")
+                elif c == "5":
+                    # leave owner menu and return to main menu
+                    break
+                else:
+                    print("Invalid selection.")
+
+        elif choice == "3":
+            print("Bye!")
             break
         else:
             print("Invalid selection.")
-        elif choice == "2":
 
+"""------------- Unit Testing ------------- """
+
+def unitTests():
+    print("Running unit tests...")
+
+    # --- Known small RSA example (toy, not secure) ---
+    # p = 61, q = 53  => n = 3233, phi = 3120
+
+    pTest, qTest = 61, 53 # two small primes
+    nTest = pTest * qTest # 3233
+    phiTest = (pTest - 1) * (qTest - 1) # 3120
+    eTest = 17 # exponent
+    dTest = modInv(eTest, phiTest) # compute private exponent
+    assert dTest == 2753, "modInv produced wrong private exponent for toy RSA"
+
+    # modPow function should match pythons built in pow
+    for a in [2, 5, 12345]:
+        for e in [0, 1, 2, 3, 10, 57]:
+            for n in [7, 97, 1009]:
+                assert modPow(a, e, n) == pow(a, e, n), "modPow mismatch vs pow()"
+
+    # modInv checks
+    for (a, m) in [(3, 11), (7, 40), (17, 3120)]:
+        inv = modInv(a, m)
+        assert (a * inv) % m == 1, f"modInv failed for a={a}, m={m}"
+
+    # encode and decode tests
+    for msg in ["Hello", "RSA test ✅", "🙂 unicode"]:
+        k = maxLength(nTest)
+        blocks = encodeMessage(msg, nTest)
+        back = decodeMessage(blocks, nTest)
+        assert back == msg, "encode/decode round-trip failed"
+
+    # --- encrypt/decrypt tests
+    msg = "attack at dawn"
+    ct = [modPow(m, eTest, nTest) for m in encodeMessage(msg, nTest)]
+    pt = decodeMessage([modPow(c, dTest, nTest) for c in ct], nTest)
+    assert pt == msg, "encrypt/decrypt round-trip failed"
+
+    # --- sign/verify tests ---
+    mblocks = encodeMessage(msg, nTest)
+    sig = [modPow(m, dTest, nTest) for m in mblocks] # sign with d
+    recovered = [modPow(s, eTest, nTest) for s in sig] # verify with e
+    assert recovered == mblocks, "sign/verify round-trip failed"
+
+    print("All unit tests passed.\n")
+
+
+if __name__ == "__main__":
+    unitTests() # unit tests small known primes
+    demo()
