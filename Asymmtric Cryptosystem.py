@@ -29,8 +29,8 @@ def modPow(base, exp, mod):
     e = exp # copy exponent to shift
     while e > 0: # iterate through until all exponent bits processed
         if e & 1:
-            results = (results * b) & mod # multiply result by base modulo mod
-            b = (b * b) & mod # square base modulo mod
+            results = (results * b) % mod # multiply result by base modulo mod
+            b = (b * b) % mod # square base modulo mod
             e >>= 1 # shift exponent right by 1 bit
     return results
 
@@ -80,7 +80,7 @@ def probablePrime(n, rounds=20):
     return True
 
 
-def generate_prime(bits):
+def generatePrime(bits):
     # Generate a probable prime with bits using Fermat test for speed
     while True: # loop until candidate passes
         cand = randomOdd(bits) # propose random odd with most sig bit set
@@ -104,10 +104,10 @@ def decodeMessage(blocks, n):
     k = maxLength(n)
     pieces = []
     for i in blocks:
-       b = bytesToInt(i, k) # convert integer back to k bytes
+       b = intToBytes(i, k) # convert integer back to k bytes
        pieces.append(b) # append chunk
-       data = b''.join(pieces) # join all chunks into a single byte object
-       return data.decode('utf-8', errors='strict') # decode back to string
+       data = b"".join(pieces) # join all chunks into a single byte object
+       return data.decode("utf-8", errors="strict") # decode back to string
 
 
 
@@ -128,8 +128,8 @@ class RSAKeyPair:
 def generateSeeds(bits):
     # generate distinct primes p and q
     while True: # loop until p != q
-        p = generate_prime(bits //2) # generate first prime
-        q = generate_prime(bits // 2) # generate second prime
+        p = generatePrime(bits //2) # generate first prime
+        q = generatePrime(bits // 2) # generate second prime
         if p != q: # make sure primes are unique
             return {"p": p, "q": q} # return dictionary with p and q
 
@@ -174,31 +174,74 @@ def signPrivateKey(message, n, d):
 def verifyPublicKey(message, sig, n, e):
     # verify RSA signature, returns true if match and false if not
     messageBlocks = encodeMessage(message, n) # re encode as ints
-    recover = [modPow(s,e,n) for s in messageBlocks] # recover m from signature
+    recover = [modPow(s,e,n) for s in sig] # recover m from signature
     return recover == messageBlocks # only valid if all blocks match
 
-""" ------------- Small Demo ---------------
-def _demo():
-    """
-    Quick demo of keygen → encrypt/decrypt → sign/verify using small keys (not secure).
-    """
-    bits = 32 # small for speed in class demo
-    seeds = generateSeeds(bits) # get p and q
-    pub = makePublicKey(seeds["p"], seeds["q"]) # build {n,e,phi}
-    priv = makePrivateKey(pub["e"], pub["phi"]) # build {d}
-    keypair = RSAKeyPair(pub["n"], pub["e"], priv["d"], seeds["p"], seeds["q"])  # pack
-
-    msg = "hello rsa!" # sample message
-    ct = encryptKey(msg, keypair.n, keypair.e)  # encrypt
-    pt = decryptKey(ct, keypair.n, keypair.d)  # decrypt
-    print("cipher:", ct) # show cipher blocks
-    print("plain :", pt) # show plaintext
-
-    sig = signPrivateKey(msg, keypair.n, keypair.d)   # sign
-    ok = verifyPublicKey(msg, sig, keypair.n, keypair.e)  # verify
-    print("sig ok:", ok) # True if signature is valid
+""" ------------- Small Demo --------------- """
 
 
-if __name__ == "__main__":  # only run demo when executed directly
-    _demo()                  # run the tiny end-to-end demonstration
-    """ # this is still being worked on
+def demo():
+   def genKeyPair(bits=32)
+       seeds = generateSeeds(bits)
+       pub = makePublicKey(seeds["p"], seeds["q"])
+       priv = makePrivateKey(seeds["e"], pub["phi"])
+       return RSAKeyPair(pub["n"], priv["e"], priv["d"])
+
+   def run():
+       encryptedMessage = []
+       signatures = []
+       keyPair = genKeyPair(bits=32) # small for demo
+
+   def mainMenu():
+        print("What is your user type?\n")
+        print("1. A public user\n")
+        print("2. A private user\n")
+        print("3. Exit\n")
+        return input("Enter your choice: ")
+
+   def publicMenu():
+       print("Okay, what would you like to do?\n")
+       print("1. Send an encrypted message\n")
+       print("2. Verify a digital signature\n")
+       print("3. Exit\n")
+       return input("Enter your choice: ")
+   def ownersMenu():
+       print("What would you like to do as the owner?\n")
+       print("1. Decrypt a message\n")
+       print("2. Sign a message\n")
+       print("3. Show the keys\n")
+       print("4. Generate a new set of keys\n")
+       print("5. Exit\n")
+       return input("Enter your choice: ")
+
+    while True:
+        choice = mainMenu()
+        if choice == "1":
+         # Public User
+            while True:
+                 c = publicMenu()
+                 if c == "1":
+                    message = input("Enter your message: ")
+                    ek = encryptKey(message, genKeyPair.n, genKeyPair.e)
+                    encryptedMessage.append(ek)
+            print("Message encrypted and sent.")
+        elif c == "2":
+            if not signatures:
+                print("There are no signature to authenticate.")
+            else:
+                print("The following messages are available:")
+                for i, (m, _) in enumerate(signatures, 1):
+                    print(f"{i}. {m}")
+                choi = input("Enter your choice: ")
+                try:
+                    m, s = signatures[int(choi)-1]
+                    ok = verifyPublicKey(m, s, keypair.n, keypair.e)
+                    print("Signature verified." if ok else "Signature is NOT valid.")
+                except Exception:
+                    print("Invalid selection.")
+        elif c == "3":
+            break
+        else:
+            print("Invalid selection.")
+        elif choice == "2":
+
